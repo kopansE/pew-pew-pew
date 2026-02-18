@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"[Convert]::FromBase64String\\(''iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==''\\) | Set-Content -Path ''icon.png'' -Encoding Byte\")",
+      "Bash(powershell -Command \"[Convert]::FromBase64String\\(''iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==''\\) | Set-Content -Path ''splash.png'' -Encoding Byte\")",
+      "Bash(powershell -Command \"[Convert]::FromBase64String\\(''iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==''\\) | Set-Content -Path ''adaptive-icon.png'' -Encoding Byte\")",
+      "Bash(dir:*)"
+    ]
+  }
+}
