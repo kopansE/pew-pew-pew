@@ -12,7 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#1a1a2e"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.PewDecide.app",
@@ -27,6 +29,11 @@
         "backgroundColor": "#1a1a2e"
       },
       "package": "com.PewDecide.app"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "6c99891e-b184-4317-92b7-b8bf347ac19d"
+      }
     }
   }
 }
