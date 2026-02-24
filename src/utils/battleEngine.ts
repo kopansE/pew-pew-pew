@@ -17,7 +17,8 @@ const generateId = () => `${Date.now()}-${idCounter++}`;
 export function createForts(
   teams: TeamColor[],
   canvasWidth: number,
-  canvasHeight: number
+  canvasHeight: number,
+  fortMaxHp: number = FORT_MAX_HP
 ): Fort[] {
   const centerX = canvasWidth / 2;
   const centerY = canvasHeight / 2;
@@ -29,8 +30,8 @@ export function createForts(
       teamId,
       x: centerX + Math.cos(angle) * radius,
       y: centerY + Math.sin(angle) * radius,
-      hp: FORT_MAX_HP,
-      maxHp: FORT_MAX_HP,
+      hp: fortMaxHp,
+      maxHp: fortMaxHp,
       isDestroyed: false,
     };
   });
@@ -161,7 +162,8 @@ export function tryShoot(
   soldier: Soldier,
   target: Soldier | null,
   forts: Fort[],
-  projectiles: Projectile[]
+  projectiles: Projectile[],
+  attackSpeedMultiplier: number = 1.0
 ): void {
   if (soldier.isDead) return;
 
@@ -169,6 +171,8 @@ export function tryShoot(
     soldier.shootCooldown--;
     return;
   }
+
+  const cooldown = Math.max(15, Math.round(SHOOT_COOLDOWN / attackSpeedMultiplier));
 
   if (target) {
     const dx = target.x - soldier.x;
@@ -192,7 +196,7 @@ export function tryShoot(
         active: true,
       });
 
-      soldier.shootCooldown = SHOOT_COOLDOWN;
+      soldier.shootCooldown = cooldown;
       return;
     }
   }
@@ -220,7 +224,7 @@ export function tryShoot(
         active: true,
       });
 
-      soldier.shootCooldown = SHOOT_COOLDOWN;
+      soldier.shootCooldown = cooldown;
     }
   }
 }

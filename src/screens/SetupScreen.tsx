@@ -17,8 +17,8 @@ import { RouteProp } from "@react-navigation/native";
 import { TEAM_COLORS, TeamColor, BattleOption } from "../types";
 
 type RootStackParamList = {
-  Setup: { previousOptions?: BattleOption[] } | undefined;
-  Battle: { options: BattleOption[] };
+  Setup: { previousOptions?: BattleOption[]; previousFortHp?: number } | undefined;
+  Battle: { options: BattleOption[]; fortHp: number };
 };
 
 type SetupScreenProps = {
@@ -65,6 +65,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
     return [...TEAM_ORDER];
   });
   const [activeColorPicker, setActiveColorPicker] = useState<number | null>(null);
+  const [fortHp, setFortHp] = useState(() => route.params?.previousFortHp ?? 10);
 
   const handleOptionCountChange = (count: number) => {
     setOptionCount(count);
@@ -108,7 +109,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
         colorHex: TEAM_COLORS[teamColor],
       });
     }
-    navigation.navigate("Battle", { options });
+    navigation.navigate("Battle", { options, fortHp });
   };
 
   return (
@@ -207,6 +208,44 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
             })}
           </View>
 
+          {/* Battle Length Selector */}
+          <View style={styles.stepperContainer}>
+            <Text style={styles.label}>Battle length</Text>
+            <View style={styles.stepper}>
+              {([
+                { label: 'Quick', hp: 5 },
+                { label: 'Avg', hp: 10 },
+                { label: 'Long', hp: 20 },
+              ] as const).map(({ label, hp }) => (
+                <TouchableOpacity
+                  key={hp}
+                  style={[
+                    styles.stepperButton,
+                    fortHp === hp && styles.stepperButtonActive,
+                  ]}
+                  onPress={() => setFortHp(hp)}
+                >
+                  <Text
+                    style={[
+                      styles.stepperText,
+                      fortHp === hp && styles.stepperTextActive,
+                    ]}
+                  >
+                    {label}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.stepperSubText,
+                      fortHp === hp && styles.stepperSubTextActive,
+                    ]}
+                  >
+                    {hp} hp
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
           {/* Play Button */}
           <TouchableOpacity
             style={[
@@ -291,6 +330,14 @@ const styles = StyleSheet.create({
   },
   stepperTextActive: {
     color: "#fff",
+  },
+  stepperSubText: {
+    fontSize: 11,
+    color: "#555",
+    marginTop: 2,
+  },
+  stepperSubTextActive: {
+    color: "rgba(255,255,255,0.7)",
   },
   inputsContainer: {
     width: "100%",

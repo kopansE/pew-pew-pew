@@ -45,14 +45,15 @@ const CANVAS_WIDTH = SCREEN_WIDTH;
 const CANVAS_HEIGHT = SCREEN_HEIGHT * 0.65;
 const SOLDIERS_PER_TEAM = 20;
 
-// Exponential spawn rate: starts at 300 frames (~5s), decays to min 60 frames (~1s)
+// Spawn interval decays from 300 frames (~5s) down to 40 frames (~0.67s)
 function getBaseSpawnInterval(elapsedFrames: number): number {
   const elapsedSeconds = elapsedFrames / 60;
-  return Math.max(60, Math.round(300 * Math.exp(-elapsedSeconds / 60)));
+  return Math.max(40, Math.round(300 * Math.exp(-elapsedSeconds / 40)));
 }
 
 interface SoldierCanvasProps {
   options: BattleOption[];
+  fortHp: number;
   onUpdate: (
     aliveCounts: Map<TeamColor, number>,
     eliminatedTeams: Set<TeamColor>
@@ -63,6 +64,7 @@ interface SoldierCanvasProps {
 
 export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
   options,
+  fortHp,
   onUpdate,
   onGameOver,
   isPaused,
@@ -189,7 +191,7 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
   // ── Initialize ───────────────────────────────────────────────────────────────
   useEffect(() => {
     const teams: TeamColor[] = options.map((o) => o.color);
-    const forts = createForts(teams, CANVAS_WIDTH, CANVAS_HEIGHT);
+    const forts = createForts(teams, CANVAS_WIDTH, CANVAS_HEIGHT, fortHp);
     fortsRef.current = forts;
 
     const allSoldiers: Soldier[] = [];
@@ -237,14 +239,16 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
       const projectiles = projectilesRef.current;
       const forts = fortsRef.current;
 
-      // Speed scales linearly: 1× at start, +1× per 60s, capped at 3×
-      const speedMultiplier = Math.min(3.0, 1.0 + gameElapsedFramesRef.current / 3600);
+      // Movement: 1× → 4× cap, reaches 2× at ~45s
+      const speedMultiplier = Math.min(4.0, 1.0 + gameElapsedFramesRef.current / 2700);
+      // Attack rate: 1× → 3× cap, reaches 2× at ~60s
+      const attackSpeedMultiplier = Math.min(3.0, 1.0 + gameElapsedFramesRef.current / 3600);
 
       for (const soldier of soldiers) {
         if (soldier.isDead) continue;
         const nearestEnemy = findNearestEnemy(soldier, soldiers);
         moveSoldier(soldier, nearestEnemy, forts, CANVAS_WIDTH, CANVAS_HEIGHT, speedMultiplier);
-        tryShoot(soldier, nearestEnemy, forts, projectiles);
+        tryShoot(soldier, nearestEnemy, forts, projectiles, attackSpeedMultiplier);
       }
 
       updateProjectiles(projectiles, soldiers, forts, CANVAS_WIDTH, CANVAS_HEIGHT);

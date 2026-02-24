@@ -11,8 +11,8 @@ import { BattleOption } from './src/types';
 
 type RootStackParamList = {
   Home: undefined;
-  Setup: { previousOptions?: BattleOption[] } | undefined;
-  Battle: { options: BattleOption[] };
+  Setup: { previousOptions?: BattleOption[]; previousFortHp?: number } | undefined;
+  Battle: { options: BattleOption[]; fortHp: number };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

@@ -15,8 +15,8 @@ import { HUD } from '../components/HUD';
 
 type RootStackParamList = {
   Home: undefined;
-  Setup: { previousOptions?: BattleOption[] } | undefined;
-  Battle: { options: BattleOption[] };
+  Setup: { previousOptions?: BattleOption[]; previousFortHp?: number } | undefined;
+  Battle: { options: BattleOption[]; fortHp: number };
 };
 
 type BattleScreenProps = {
@@ -28,7 +28,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   navigation,
   route,
 }) => {
-  const { options } = route.params;
+  const { options, fortHp } = route.params;
 
   const [aliveCounts, setAliveCounts] = useState<Map<TeamColor, number>>(
     new Map()
@@ -59,7 +59,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       index: 1,
       routes: [
         { name: 'Home' },
-        { name: 'Setup', params: { previousOptions: options } },
+        { name: 'Setup', params: { previousOptions: options, previousFortHp: fortHp } },
       ],
     });
   };
@@ -75,6 +75,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
       <SoldierCanvas
         key={gameKey}
         options={options}
+        fortHp={fortHp}
         onUpdate={handleUpdate}
         onGameOver={handleGameOver}
         isPaused={winner !== null}
