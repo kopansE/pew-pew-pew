@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { BattleOption, TeamColor, TEAM_COLORS, TEAM_EMOJIS } from '../types';
+import { BattleOption, TeamColor, TEAM_COLORS } from '../types';
 
 interface HUDProps {
   options: BattleOption[];
@@ -22,7 +22,14 @@ export const HUD: React.FC<HUDProps> = ({
 
           return (
             <View key={option.color} style={styles.teamItem}>
-              <Text style={styles.emoji}>{TEAM_EMOJIS[option.color]}</Text>
+              <View
+                style={[
+                  styles.teamDot,
+                  {
+                    backgroundColor: isEliminated ? '#444' : option.colorHex,
+                  },
+                ]}
+              />
               <Text
                 style={[
                   styles.teamName,
@@ -69,8 +76,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  emoji: {
-    fontSize: 12,
+  teamDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   teamName: {
     fontSize: 14,

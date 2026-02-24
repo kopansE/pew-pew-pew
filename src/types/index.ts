@@ -1,4 +1,17 @@
-export type TeamColor = 'red' | 'blue' | 'green' | 'yellow';
+export type TeamColor =
+  | 'red'
+  | 'blue'
+  | 'green'
+  | 'yellow'
+  | 'coral'
+  | 'cyan'
+  | 'lime'
+  | 'magenta'
+  | 'orange'
+  | 'peach'
+  | 'purple'
+  | 'teal'
+  | 'turquoise';
 
 export interface Team {
   id: TeamColor;
@@ -57,15 +70,17 @@ export interface GameState {
 }
 
 export const TEAM_COLORS: Record<TeamColor, string> = {
-  red: '#e63946',
-  blue: '#4361ee',
-  green: '#2a9d8f',
-  yellow: '#f4a261',
-};
-
-export const TEAM_EMOJIS: Record<TeamColor, string> = {
-  red: '🔴',
-  blue: '🔵',
-  green: '🟢',
-  yellow: '🟡',
+  red:       '#e63946',
+  blue:      '#4361ee',
+  green:     '#4caf50',
+  yellow:    '#ffd700',
+  coral:     '#ff6b6b',
+  cyan:      '#00b4d8',
+  lime:      '#76c442',
+  magenta:   '#e91e8c',
+  orange:    '#f77f00',
+  peach:     '#ffb347',
+  purple:    '#7b2d8b',
+  teal:      '#2a9d8f',
+  turquoise: '#06d6a0',
 };

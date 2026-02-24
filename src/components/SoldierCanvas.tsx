@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import {
   Canvas,
@@ -45,6 +45,12 @@ const CANVAS_WIDTH = SCREEN_WIDTH;
 const CANVAS_HEIGHT = SCREEN_HEIGHT * 0.65;
 const SOLDIERS_PER_TEAM = 20;
 
+// Exponential spawn rate: starts at 300 frames (~5s), decays to min 60 frames (~1s)
+function getBaseSpawnInterval(elapsedFrames: number): number {
+  const elapsedSeconds = elapsedFrames / 60;
+  return Math.max(60, Math.round(300 * Math.exp(-elapsedSeconds / 60)));
+}
+
 interface SoldierCanvasProps {
   options: BattleOption[];
   onUpdate: (
@@ -55,72 +61,106 @@ interface SoldierCanvasProps {
   isPaused: boolean;
 }
 
-const soldierImageSources: Record<TeamColor, ReturnType<typeof require>> = {
-  red: require('../../assets/soldier_red.png'),
-  blue: require('../../assets/soldier_blue.png'),
-  green: require('../../assets/soldier_green.png'),
-  yellow: require('../../assets/soldier_yellow.png'),
-};
-
-const fortImageSources: Record<TeamColor, ReturnType<typeof require>> = {
-  red: require('../../assets/fort_red.png'),
-  blue: require('../../assets/fort_blue.png'),
-  green: require('../../assets/fort_green.png'),
-  yellow: require('../../assets/fort_yellow.png'),
-};
-
-const fortBrokenImageSources: Record<TeamColor, ReturnType<typeof require>> = {
-  red: require('../../assets/fort_broken_red.png'),
-  blue: require('../../assets/fort_broken_blue.png'),
-  green: require('../../assets/fort_broken_green.png'),
-  yellow: require('../../assets/fort_broken_yellow.png'),
-};
-
 export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
   options,
   onUpdate,
   onGameOver,
   isPaused,
 }) => {
-  // Soldier images
-  const redImg = useImage(soldierImageSources.red);
-  const blueImg = useImage(soldierImageSources.blue);
-  const greenImg = useImage(soldierImageSources.green);
-  const yellowImg = useImage(soldierImageSources.yellow);
+  // ── Soldier images (13 colors) ──────────────────────────────────────────────
+  const imgSoldierRed       = useImage(require('../../assets/soldier_red.png'));
+  const imgSoldierBlue      = useImage(require('../../assets/soldier_blue.png'));
+  const imgSoldierGreen     = useImage(require('../../assets/soldier_green.png'));
+  const imgSoldierYellow    = useImage(require('../../assets/soldier_yellow.png'));
+  const imgSoldierCoral     = useImage(require('../../assets/soldier_coral.png'));
+  const imgSoldierCyan      = useImage(require('../../assets/soldier_cyan.png'));
+  const imgSoldierLime      = useImage(require('../../assets/soldier_lime.png'));
+  const imgSoldierMagenta   = useImage(require('../../assets/soldier_magenta.png'));
+  const imgSoldierOrange    = useImage(require('../../assets/soldier_orange.png'));
+  const imgSoldierPeach     = useImage(require('../../assets/soldier_peach.png'));
+  const imgSoldierPurple    = useImage(require('../../assets/soldier_purple.png'));
+  const imgSoldierTeal      = useImage(require('../../assets/soldier_teal.png'));
+  const imgSoldierTurquoise = useImage(require('../../assets/soldier_turquoise.png'));
 
   const teamImages: Record<TeamColor, ReturnType<typeof useImage>> = {
-    red: redImg,
-    blue: blueImg,
-    green: greenImg,
-    yellow: yellowImg,
+    red:       imgSoldierRed,
+    blue:      imgSoldierBlue,
+    green:     imgSoldierGreen,
+    yellow:    imgSoldierYellow,
+    coral:     imgSoldierCoral,
+    cyan:      imgSoldierCyan,
+    lime:      imgSoldierLime,
+    magenta:   imgSoldierMagenta,
+    orange:    imgSoldierOrange,
+    peach:     imgSoldierPeach,
+    purple:    imgSoldierPurple,
+    teal:      imgSoldierTeal,
+    turquoise: imgSoldierTurquoise,
   };
 
-  // Fort images (normal)
-  const fortRedImg = useImage(fortImageSources.red);
-  const fortBlueImg = useImage(fortImageSources.blue);
-  const fortGreenImg = useImage(fortImageSources.green);
-  const fortYellowImg = useImage(fortImageSources.yellow);
+  // ── Fort images – normal (13 colors) ────────────────────────────────────────
+  const imgFortRed       = useImage(require('../../assets/fort_red.png'));
+  const imgFortBlue      = useImage(require('../../assets/fort_blue.png'));
+  const imgFortGreen     = useImage(require('../../assets/fort_green.png'));
+  const imgFortYellow    = useImage(require('../../assets/fort_yellow.png'));
+  const imgFortCoral     = useImage(require('../../assets/fort_coral.png'));
+  const imgFortCyan      = useImage(require('../../assets/fort_cyan.png'));
+  const imgFortLime      = useImage(require('../../assets/fort_lime.png'));
+  const imgFortMagenta   = useImage(require('../../assets/fort_magenta.png'));
+  const imgFortOrange    = useImage(require('../../assets/fort_orange.png'));
+  const imgFortPeach     = useImage(require('../../assets/fort_peach.png'));
+  const imgFortPurple    = useImage(require('../../assets/fort_purple.png'));
+  const imgFortTeal      = useImage(require('../../assets/fort_teal.png'));
+  const imgFortTurquoise = useImage(require('../../assets/fort_turquoise.png'));
 
   const teamFortImages: Record<TeamColor, ReturnType<typeof useImage>> = {
-    red: fortRedImg,
-    blue: fortBlueImg,
-    green: fortGreenImg,
-    yellow: fortYellowImg,
+    red:       imgFortRed,
+    blue:      imgFortBlue,
+    green:     imgFortGreen,
+    yellow:    imgFortYellow,
+    coral:     imgFortCoral,
+    cyan:      imgFortCyan,
+    lime:      imgFortLime,
+    magenta:   imgFortMagenta,
+    orange:    imgFortOrange,
+    peach:     imgFortPeach,
+    purple:    imgFortPurple,
+    teal:      imgFortTeal,
+    turquoise: imgFortTurquoise,
   };
 
-  // Fort images (broken)
-  const fortBrokenRedImg = useImage(fortBrokenImageSources.red);
-  const fortBrokenBlueImg = useImage(fortBrokenImageSources.blue);
-  const fortBrokenGreenImg = useImage(fortBrokenImageSources.green);
-  const fortBrokenYellowImg = useImage(fortBrokenImageSources.yellow);
+  // ── Fort images – broken (13 colors) ────────────────────────────────────────
+  const imgFortBrokenRed       = useImage(require('../../assets/fort_broken_red.png'));
+  const imgFortBrokenBlue      = useImage(require('../../assets/fort_broken_blue.png'));
+  const imgFortBrokenGreen     = useImage(require('../../assets/fort_broken_green.png'));
+  const imgFortBrokenYellow    = useImage(require('../../assets/fort_broken_yellow.png'));
+  const imgFortBrokenCoral     = useImage(require('../../assets/fort_broken_coral.png'));
+  const imgFortBrokenCyan      = useImage(require('../../assets/fort_broken_cyan.png'));
+  const imgFortBrokenLime      = useImage(require('../../assets/fort_broken_lime.png'));
+  const imgFortBrokenMagenta   = useImage(require('../../assets/fort_broken_magenta.png'));
+  const imgFortBrokenOrange    = useImage(require('../../assets/fort_broken_orange.png'));
+  const imgFortBrokenPeach     = useImage(require('../../assets/fort_broken_peach.png'));
+  const imgFortBrokenPurple    = useImage(require('../../assets/fort_broken_purple.png'));
+  const imgFortBrokenTeal      = useImage(require('../../assets/fort_broken_teal.png'));
+  const imgFortBrokenTurquoise = useImage(require('../../assets/fort_broken_turquoise.png'));
 
   const teamFortBrokenImages: Record<TeamColor, ReturnType<typeof useImage>> = {
-    red: fortBrokenRedImg,
-    blue: fortBrokenBlueImg,
-    green: fortBrokenGreenImg,
-    yellow: fortBrokenYellowImg,
+    red:       imgFortBrokenRed,
+    blue:      imgFortBrokenBlue,
+    green:     imgFortBrokenGreen,
+    yellow:    imgFortBrokenYellow,
+    coral:     imgFortBrokenCoral,
+    cyan:      imgFortBrokenCyan,
+    lime:      imgFortBrokenLime,
+    magenta:   imgFortBrokenMagenta,
+    orange:    imgFortBrokenOrange,
+    peach:     imgFortBrokenPeach,
+    purple:    imgFortBrokenPurple,
+    teal:      imgFortBrokenTeal,
+    turquoise: imgFortBrokenTurquoise,
   };
 
+  // ── Game state refs ──────────────────────────────────────────────────────────
   const soldiersRef = useRef<Soldier[]>([]);
   const projectilesRef = useRef<Projectile[]>([]);
   const fortsRef = useRef<Fort[]>([]);
@@ -128,7 +168,11 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
   const eliminatedTeamsRef = useRef<Set<TeamColor>>(new Set());
   const gameOverRef = useRef(false);
   const frameCountRef = useRef(0);
-  const spawnTimerRef = useRef(0);
+
+  // Per-fort spawn timers and targets
+  const fortSpawnTimersRef = useRef<number[]>([]);
+  const fortSpawnTargetsRef = useRef<number[]>([]);
+  const gameElapsedFramesRef = useRef(0);
 
   const isPausedRef = useRef(isPaused);
   const optionsRef = useRef(options);
@@ -142,7 +186,7 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
 
   const [renderTrigger, setRenderTrigger] = useState(0);
 
-  // Initialize forts and soldiers
+  // ── Initialize ───────────────────────────────────────────────────────────────
   useEffect(() => {
     const teams: TeamColor[] = options.map((o) => o.color);
     const forts = createForts(teams, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -167,13 +211,19 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
     eliminatedTeamsRef.current = new Set();
     gameOverRef.current = false;
     frameCountRef.current = 0;
-    spawnTimerRef.current = 0;
+    gameElapsedFramesRef.current = 0;
+
+    // Stagger initial timers so forts don't all spawn at the same moment
+    fortSpawnTimersRef.current = forts.map((_, i) =>
+      Math.floor(Math.random() * 150 + i * (300 / forts.length))
+    );
+    fortSpawnTargetsRef.current = forts.map(() => 300);
 
     const counts = countAliveByTeam(allSoldiers);
     onUpdate(counts, new Set());
   }, [options]);
 
-  // Game loop
+  // ── Game loop ────────────────────────────────────────────────────────────────
   useEffect(() => {
     let rafId: number;
 
@@ -187,11 +237,13 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
       const projectiles = projectilesRef.current;
       const forts = fortsRef.current;
 
+      // Speed scales linearly: 1× at start, +1× per 60s, capped at 3×
+      const speedMultiplier = Math.min(3.0, 1.0 + gameElapsedFramesRef.current / 3600);
+
       for (const soldier of soldiers) {
         if (soldier.isDead) continue;
-
         const nearestEnemy = findNearestEnemy(soldier, soldiers);
-        moveSoldier(soldier, nearestEnemy, forts, CANVAS_WIDTH, CANVAS_HEIGHT);
+        moveSoldier(soldier, nearestEnemy, forts, CANVAS_WIDTH, CANVAS_HEIGHT, speedMultiplier);
         tryShoot(soldier, nearestEnemy, forts, projectiles);
       }
 
@@ -209,12 +261,21 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
         }
       }
 
-      // Spawn 1 soldier per alive fort every ~4 seconds (240 frames at 60fps)
-      spawnTimerRef.current++;
-      if (spawnTimerRef.current >= 300) {
-        spawnTimerRef.current = 0;
-        for (const fort of forts) {
-          if (fort.isDestroyed) continue;
+      // Per-fort spawn with exponential rate boost and jitter to break sync
+      gameElapsedFramesRef.current++;
+      for (let i = 0; i < forts.length; i++) {
+        const fort = forts[i];
+        if (fort.isDestroyed) continue;
+
+        fortSpawnTimersRef.current[i]++;
+
+        if (fortSpawnTimersRef.current[i] >= fortSpawnTargetsRef.current[i]) {
+          fortSpawnTimersRef.current[i] = 0;
+
+          const base = getBaseSpawnInterval(gameElapsedFramesRef.current);
+          const jitter = Math.floor((Math.random() - 0.5) * 60);
+          fortSpawnTargetsRef.current[i] = Math.max(45, base + jitter);
+
           const newSoldier = spawnSoldierAtFort(fort, CANVAS_WIDTH, CANVAS_HEIGHT);
           if (newSoldier) {
             soldiersRef.current.push(newSoldier);
@@ -244,6 +305,17 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
     return () => cancelAnimationFrame(rafId);
   }, []);
 
+  // Color map: teamId → colorHex from the options passed in
+  const colorMap = useMemo(() => {
+    const map: Partial<Record<TeamColor, string>> = {};
+    for (const opt of options) {
+      map[opt.color] = opt.colorHex;
+    }
+    return map;
+  }, [options]);
+
+  const getColor = (teamId: TeamColor) => colorMap[teamId] ?? TEAM_COLORS[teamId];
+
   const soldiers = soldiersRef.current;
   const projectiles = projectilesRef.current;
   const forts = fortsRef.current;
@@ -253,7 +325,7 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
       <Canvas style={styles.canvas}>
         <Fill color="#1a1a2e" />
 
-        {/* Render forts (behind everything) */}
+        {/* Forts */}
         {forts.map((fort) => {
           const img = fort.isDestroyed
             ? teamFortBrokenImages[fort.teamId]
@@ -277,33 +349,19 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
               )}
               {!fort.isDestroyed && (
                 <>
-                  <Rect
-                    x={barX}
-                    y={barY}
-                    width={HP_BAR_WIDTH}
-                    height={HP_BAR_HEIGHT}
-                    color="#333"
-                  />
-                  <Rect
-                    x={barX}
-                    y={barY}
-                    width={HP_BAR_WIDTH * fillRatio}
-                    height={HP_BAR_HEIGHT}
-                    color={TEAM_COLORS[fort.teamId]}
-                  />
+                  <Rect x={barX} y={barY} width={HP_BAR_WIDTH} height={HP_BAR_HEIGHT} color="#333" />
+                  <Rect x={barX} y={barY} width={HP_BAR_WIDTH * fillRatio} height={HP_BAR_HEIGHT} color={getColor(fort.teamId)} />
                 </>
               )}
             </Group>
           );
         })}
 
-        {/* Render soldiers */}
+        {/* Soldiers */}
         {soldiers.map((soldier) => {
           const img = teamImages[soldier.teamId];
           const opacity = soldier.isDead ? soldier.deathAnimation : 1;
-          const size = soldier.isDead
-            ? SPRITE_SIZE * soldier.deathAnimation
-            : SPRITE_SIZE;
+          const size = soldier.isDead ? SPRITE_SIZE * soldier.deathAnimation : SPRITE_SIZE;
           const half = size / 2;
 
           return (
@@ -318,12 +376,7 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
                   fit="contain"
                 />
               ) : (
-                <Circle
-                  cx={soldier.x}
-                  cy={soldier.y}
-                  r={SOLDIER_RADIUS}
-                  color={TEAM_COLORS[soldier.teamId]}
-                />
+                <Circle cx={soldier.x} cy={soldier.y} r={SOLDIER_RADIUS} color={getColor(soldier.teamId)} />
               )}
               {!soldier.isDead && soldier.hp < soldier.maxHp && (
                 <Circle
@@ -337,7 +390,7 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
           );
         })}
 
-        {/* Render projectiles */}
+        {/* Projectiles */}
         {projectiles.map((projectile) => {
           if (!projectile.active) return null;
           return (
@@ -346,7 +399,7 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
               cx={projectile.x}
               cy={projectile.y}
               r={PROJECTILE_RADIUS}
-              color={TEAM_COLORS[projectile.teamId]}
+              color={getColor(projectile.teamId)}
             />
           );
         })}
@@ -361,11 +414,7 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
             key={`hp-text-${fort.teamId}`}
             style={[
               styles.fortHpText,
-              {
-                left: fort.x - 25,
-                top: topPos,
-                color: TEAM_COLORS[fort.teamId],
-              },
+              { left: fort.x - 25, top: topPos, color: getColor(fort.teamId) },
             ]}
           >
             {fort.hp}/{fort.maxHp}

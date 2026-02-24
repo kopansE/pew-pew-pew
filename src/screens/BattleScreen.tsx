@@ -14,6 +14,7 @@ import { SoldierCanvas } from '../components/SoldierCanvas';
 import { HUD } from '../components/HUD';
 
 type RootStackParamList = {
+  Home: undefined;
   Setup: { previousOptions?: BattleOption[] } | undefined;
   Battle: { options: BattleOption[] };
 };
@@ -52,7 +53,15 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 
   const handleRematch = () => {
     setWinner(null);
-    navigation.navigate('Setup', { previousOptions: options });
+    // Reset the stack to [Home, Setup] so back-swipe always goes Home → Setup → Battle
+    // and never accumulates previous game screens
+    navigation.reset({
+      index: 1,
+      routes: [
+        { name: 'Home' },
+        { name: 'Setup', params: { previousOptions: options } },
+      ],
+    });
   };
 
   return (

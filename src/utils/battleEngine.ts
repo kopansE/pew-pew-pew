@@ -119,22 +119,23 @@ export function moveSoldier(
   target: Soldier | null,
   forts: Fort[],
   canvasWidth: number,
-  canvasHeight: number
+  canvasHeight: number,
+  speedMultiplier: number = 1.0
 ): void {
   if (soldier.isDead) return;
 
   if (Math.random() < RANDOM_MOVE_CHANCE) {
     const angle = Math.random() * Math.PI * 2;
-    soldier.x += Math.cos(angle) * RANDOM_MOVE_SPEED;
-    soldier.y += Math.sin(angle) * RANDOM_MOVE_SPEED;
+    soldier.x += Math.cos(angle) * RANDOM_MOVE_SPEED * speedMultiplier;
+    soldier.y += Math.sin(angle) * RANDOM_MOVE_SPEED * speedMultiplier;
   } else if (target) {
     const dx = target.x - soldier.x;
     const dy = target.y - soldier.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (dist > SHOOT_RANGE * 0.5) {
-      soldier.x += (dx / dist) * SOLDIER_SPEED;
-      soldier.y += (dy / dist) * SOLDIER_SPEED;
+      soldier.x += (dx / dist) * SOLDIER_SPEED * speedMultiplier;
+      soldier.y += (dy / dist) * SOLDIER_SPEED * speedMultiplier;
     }
 
     soldier.targetId = target.id;
@@ -146,8 +147,8 @@ export function moveSoldier(
       const dist = Math.sqrt(dx * dx + dy * dy);
 
       if (dist > SHOOT_RANGE * 0.5) {
-        soldier.x += (dx / dist) * SOLDIER_SPEED;
-        soldier.y += (dy / dist) * SOLDIER_SPEED;
+        soldier.x += (dx / dist) * SOLDIER_SPEED * speedMultiplier;
+        soldier.y += (dy / dist) * SOLDIER_SPEED * speedMultiplier;
       }
     }
   }
