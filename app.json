@@ -2,7 +2,7 @@
   "expo": {
     "name": "PewDecide",
     "slug": "PewDecide",
-    "version": "6.8.0",
+    "version": "6.9.0",
     "sdkVersion": "54.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.PewDecide.app",
-      "buildNumber": "3",
+      "buildNumber": "4",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
