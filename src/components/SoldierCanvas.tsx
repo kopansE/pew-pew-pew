@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
+import { View, Text, StyleSheet, Dimensions, LayoutChangeEvent } from 'react-native';
 import {
   Canvas,
   Circle,
@@ -40,10 +40,10 @@ const FORT_RENDER_SIZE = 64;
 const HP_BAR_WIDTH = 50;
 const HP_BAR_HEIGHT = 5;
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CANVAS_WIDTH = SCREEN_WIDTH;
-const CANVAS_HEIGHT = SCREEN_HEIGHT * 0.65;
 const SOLDIERS_PER_TEAM = 20;
+const FORT_CENTER_Y_OFFSET = 0;
 
 // Spawn interval decays from 300 frames (~5s) down to 40 frames (~0.67s)
 function getBaseSpawnInterval(elapsedFrames: number): number {
@@ -162,6 +162,18 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
     turquoise: imgFortBrokenTurquoise,
   };
 
+  // ── Canvas layout ─────────────────────────────────────────────────────────────
+  const [canvasHeight, setCanvasHeight] = useState(0);
+  const canvasHeightRef = useRef(0);
+
+  const handleLayout = useCallback((e: LayoutChangeEvent) => {
+    const { height } = e.nativeEvent.layout;
+    if (height > 0 && canvasHeightRef.current === 0) {
+      canvasHeightRef.current = height;
+      setCanvasHeight(height);
+    }
+  }, []);
+
   // ── Game state refs ──────────────────────────────────────────────────────────
   const soldiersRef = useRef<Soldier[]>([]);
   const projectilesRef = useRef<Projectile[]>([]);
@@ -190,8 +202,10 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
 
   // ── Initialize ───────────────────────────────────────────────────────────────
   useEffect(() => {
+    if (canvasHeight === 0) return; // wait for layout
+
     const teams: TeamColor[] = options.map((o) => o.color);
-    const forts = createForts(teams, CANVAS_WIDTH, CANVAS_HEIGHT, fortHp);
+    const forts = createForts(teams, CANVAS_WIDTH, canvasHeight, fortHp, FORT_CENTER_Y_OFFSET);
     fortsRef.current = forts;
 
     const allSoldiers: Soldier[] = [];
@@ -202,7 +216,7 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
         fort.x,
         fort.y,
         CANVAS_WIDTH,
-        CANVAS_HEIGHT
+        canvasHeight
       );
       allSoldiers.push(...teamSoldiers);
     }
@@ -223,7 +237,7 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
 
     const counts = countAliveByTeam(allSoldiers);
     onUpdate(counts, new Set());
-  }, [options]);
+  }, [options, canvasHeight]);
 
   // ── Game loop ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -244,14 +258,15 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
       // Attack rate: 1× → 3× cap, reaches 2× at ~60s
       const attackSpeedMultiplier = Math.min(3.0, 1.0 + gameElapsedFramesRef.current / 3600);
 
+      const ch = canvasHeightRef.current;
       for (const soldier of soldiers) {
         if (soldier.isDead) continue;
         const nearestEnemy = findNearestEnemy(soldier, soldiers);
-        moveSoldier(soldier, nearestEnemy, forts, CANVAS_WIDTH, CANVAS_HEIGHT, speedMultiplier);
+        moveSoldier(soldier, nearestEnemy, forts, CANVAS_WIDTH, ch, speedMultiplier);
         tryShoot(soldier, nearestEnemy, forts, projectiles, attackSpeedMultiplier);
       }
 
-      updateProjectiles(projectiles, soldiers, forts, CANVAS_WIDTH, CANVAS_HEIGHT);
+      updateProjectiles(projectiles, soldiers, forts, CANVAS_WIDTH, ch);
       updateDeathAnimations(soldiers);
 
       projectilesRef.current = cleanupProjectiles(projectiles);
@@ -261,7 +276,13 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
 
       for (const fort of forts) {
         if (fort.isDestroyed && !eliminatedTeamsRef.current.has(fort.teamId)) {
-          eliminatedTeamsRef.current.add(fort.teamId);
+          // Only mark eliminated when ALL forts of this color are destroyed
+          const allGone = forts
+            .filter((f) => f.teamId === fort.teamId)
+            .every((f) => f.isDestroyed);
+          if (allGone) {
+            eliminatedTeamsRef.current.add(fort.teamId);
+          }
         }
       }
 
@@ -280,7 +301,7 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
           const jitter = Math.floor((Math.random() - 0.5) * 60);
           fortSpawnTargetsRef.current[i] = Math.max(45, base + jitter);
 
-          const newSoldier = spawnSoldierAtFort(fort, CANVAS_WIDTH, CANVAS_HEIGHT);
+          const newSoldier = spawnSoldierAtFort(fort, CANVAS_WIDTH, ch);
           if (newSoldier) {
             soldiersRef.current.push(newSoldier);
           }
@@ -325,8 +346,8 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
   const forts = fortsRef.current;
 
   return (
-    <View style={styles.container}>
-      <Canvas style={styles.canvas}>
+    <View style={styles.container} onLayout={handleLayout}>
+      {canvasHeight > 0 && <Canvas style={{ width: CANVAS_WIDTH, height: canvasHeight }}>
         <Fill color="#1a1a2e" />
 
         {/* Forts */}
@@ -340,7 +361,7 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
           const fillRatio = fort.hp / fort.maxHp;
 
           return (
-            <Group key={`fort-${fort.teamId}`}>
+            <Group key={`fort-${fort.id}`}>
               {img && (
                 <SkiaImage
                   image={img}
@@ -407,7 +428,7 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
             />
           );
         })}
-      </Canvas>
+      </Canvas>}
 
       {/* Fort HP text overlays */}
       {forts.map((fort) => {
@@ -415,7 +436,7 @@ export const SoldierCanvas: React.FC<SoldierCanvasProps> = ({
         const topPos = fort.y + FORT_RENDER_SIZE / 2 + HP_BAR_HEIGHT + 6;
         return (
           <Text
-            key={`hp-text-${fort.teamId}`}
+            key={`hp-text-${fort.id}`}
             style={[
               styles.fortHpText,
               { left: fort.x - 25, top: topPos, color: getColor(fort.teamId) },
@@ -433,10 +454,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a1a2e',
-  },
-  canvas: {
-    width: CANVAS_WIDTH,
-    height: CANVAS_HEIGHT,
   },
   fortHpText: {
     position: 'absolute',

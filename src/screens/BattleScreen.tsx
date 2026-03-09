@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -30,14 +30,15 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
 }) => {
   const { options, fortHp } = route.params;
 
-  const [aliveCounts, setAliveCounts] = useState<Map<TeamColor, number>>(
-    new Map()
-  );
-  const [eliminatedTeams, setEliminatedTeams] = useState<Set<TeamColor>>(
-    new Set()
-  );
+  const [aliveCounts, setAliveCounts] = useState<Map<TeamColor, number>>(new Map());
+  const [eliminatedTeams, setEliminatedTeams] = useState<Set<TeamColor>>(new Set());
   const [winner, setWinner] = useState<BattleOption | null>(null);
   const [gameKey, setGameKey] = useState(0);
+
+  // Win tracking — persists across rounds in a series
+  const [wins, setWins] = useState<Record<string, number>>({});
+  const winsRef = useRef<Record<string, number>>({});
+  const [showRootingFor, setShowRootingFor] = useState(false);
 
   const handleUpdate = useCallback(
     (counts: Map<TeamColor, number>, eliminated: Set<TeamColor>) => {
@@ -48,20 +49,34 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
   );
 
   const handleGameOver = useCallback((winningOption: BattleOption) => {
+    const newWins = { ...winsRef.current };
+    newWins[winningOption.color] = (newWins[winningOption.color] || 0) + 1;
+    winsRef.current = newWins;
+
+    const maxWins = Math.max(...Object.values(newWins));
+    setWins(newWins);
     setWinner(winningOption);
+    if (maxWins >= 4) {
+      setShowRootingFor(true);
+    }
   }, []);
 
-  const handleRematch = () => {
+  // X for "Best out of X": 3 if leader has 1 win, 5 if 2, 7 if 3
+  const maxWins =
+    Object.keys(wins).length > 0 ? Math.max(...Object.values(wins)) : 0;
+  const bestOfX = maxWins >= 3 ? 7 : maxWins >= 2 ? 5 : 3;
+
+  const handleBestOf = () => {
     setWinner(null);
-    // Reset the stack to [Home, Setup] so back-swipe always goes Home → Setup → Battle
-    // and never accumulates previous game screens
-    navigation.reset({
-      index: 1,
-      routes: [
-        { name: 'Home' },
-        { name: 'Setup', params: { previousOptions: options, previousFortHp: fortHp } },
-      ],
-    });
+    setGameKey((k) => k + 1);
+  };
+
+  const handleAcceptWinner = () => {
+    navigation.popToTop();
+  };
+
+  const handleDebateSomethingElse = () => {
+    navigation.popToTop();
   };
 
   return (
@@ -70,6 +85,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         options={options}
         aliveCounts={aliveCounts}
         eliminatedTeams={eliminatedTeams}
+        wins={wins}
       />
 
       <SoldierCanvas
@@ -78,29 +94,53 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({
         fortHp={fortHp}
         onUpdate={handleUpdate}
         onGameOver={handleGameOver}
-        isPaused={winner !== null}
+        isPaused={winner !== null || showRootingFor}
       />
 
       {/* Victory Modal */}
-      <Modal visible={winner !== null} transparent animationType="fade">
+      <Modal
+        visible={winner !== null && !showRootingFor}
+        transparent
+        animationType="fade"
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.victoryEmoji}>🎉</Text>
             <Text style={styles.victoryLabel}>Winner</Text>
             <Text
-              style={[
-                styles.victoryText,
-                { color: winner?.colorHex || '#fff' },
-              ]}
+              style={[styles.victoryText, { color: winner?.colorHex || '#fff' }]}
             >
               {winner?.name}
             </Text>
 
+            <TouchableOpacity style={styles.primaryButton} onPress={handleBestOf}>
+              <Text style={styles.primaryButtonText}>Best out of {bestOfX}</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
-              style={styles.rematchButton}
-              onPress={handleRematch}
+              style={styles.secondaryButton}
+              onPress={handleAcceptWinner}
             >
-              <Text style={styles.modalButtonText}>Rematch</Text>
+              <Text style={styles.secondaryButtonText}>Accept Winner</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 4-Win "Rooting For" Modal */}
+      <Modal visible={showRootingFor} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.rootingTitle}>
+              The option you're rooting for
+            </Text>
+            <Text style={styles.rootingSubtitle}>— pick that one</Text>
+
+            <TouchableOpacity
+              style={[styles.primaryButton, { marginTop: 32 }]}
+              onPress={handleDebateSomethingElse}
+            >
+              <Text style={styles.primaryButtonText}>Debate something else</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -145,16 +185,43 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 32,
   },
-  rematchButton: {
+  primaryButton: {
     width: '100%',
     backgroundColor: '#4361ee',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
+    marginBottom: 12,
   },
-  modalButtonText: {
+  primaryButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '700',
+  },
+  secondaryButton: {
+    width: '100%',
+    borderWidth: 1.5,
+    borderColor: '#3a3a5e',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    color: '#888',
+    fontSize: 16,
     fontWeight: '600',
+  },
+  rootingTitle: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
+    lineHeight: 34,
+  },
+  rootingSubtitle: {
+    fontSize: 20,
+    color: '#888',
+    textAlign: 'center',
+    marginTop: 8,
   },
 });

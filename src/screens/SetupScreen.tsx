@@ -74,7 +74,11 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
 
   const handleNameChange = (index: number, name: string) => {
     const newNames = [...optionNames];
-    newNames[index] = name;
+    const color = optionColors[index];
+    // Keep all slots with the same color in sync
+    for (let i = 0; i < newNames.length; i++) {
+      if (optionColors[i] === color) newNames[i] = name;
+    }
     setOptionNames(newNames);
   };
 
@@ -88,6 +92,13 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
     newColors[index] = color;
     setOptionColors(newColors);
     setActiveColorPicker(null);
+    // If another slot already has this color, copy its name to this slot
+    const existingIdx = optionColors.findIndex((c, i) => i !== index && c === color);
+    if (existingIdx !== -1) {
+      const newNames = [...optionNames];
+      newNames[index] = optionNames[existingIdx];
+      setOptionNames(newNames);
+    }
   };
 
   const isPlayEnabled = () => {

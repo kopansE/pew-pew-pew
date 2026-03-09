@@ -18,15 +18,17 @@ export function createForts(
   teams: TeamColor[],
   canvasWidth: number,
   canvasHeight: number,
-  fortMaxHp: number = FORT_MAX_HP
+  fortMaxHp: number = FORT_MAX_HP,
+  centerYOffset: number = 0
 ): Fort[] {
   const centerX = canvasWidth / 2;
-  const centerY = canvasHeight / 2;
+  const centerY = canvasHeight / 2 + centerYOffset;
   const radius = Math.min(canvasWidth, canvasHeight) * 0.35;
 
   return teams.map((teamId, i) => {
     const angle = -Math.PI / 2 + (i / teams.length) * Math.PI * 2;
     return {
+      id: generateId(),
       teamId,
       x: centerX + Math.cos(angle) * radius,
       y: centerY + Math.sin(angle) * radius,
@@ -357,16 +359,19 @@ export function spawnSoldierAtFort(
 export function checkWinner(forts: Fort[], soldiers: Soldier[]): TeamColor | null {
   const aliveForts = forts.filter((f) => !f.isDestroyed);
 
-  if (aliveForts.length === 1) {
-    return aliveForts[0].teamId;
+  if (aliveForts.length > 0) {
+    const aliveTeams = new Set(aliveForts.map((f) => f.teamId));
+    if (aliveTeams.size === 1) {
+      return [...aliveTeams][0];
+    }
+    return null;
   }
 
-  if (aliveForts.length === 0) {
-    const aliveCounts = countAliveByTeam(soldiers);
-    const teamsAlive = [...aliveCounts.entries()].filter(([, count]) => count > 0);
-    if (teamsAlive.length === 1) {
-      return teamsAlive[0][0];
-    }
+  // All forts destroyed — fall back to soldier count
+  const aliveCounts = countAliveByTeam(soldiers);
+  const teamsAlive = [...aliveCounts.entries()].filter(([, count]) => count > 0);
+  if (teamsAlive.length === 1) {
+    return teamsAlive[0][0];
   }
 
   return null;

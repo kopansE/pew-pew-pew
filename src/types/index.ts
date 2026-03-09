@@ -47,6 +47,7 @@ export interface Projectile {
 }
 
 export interface Fort {
+  id: string;
   teamId: TeamColor;
   x: number;
   y: number;
